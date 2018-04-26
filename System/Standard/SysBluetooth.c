@@ -126,6 +126,8 @@ const rom UINT8 TCU_ACCEPT_SEND_EVENT[10] = {0x0a, 0x00, 0x00, 0xe1, 0xf1, 0x03,
 const rom UINT8 TCU_SPP_DATA_SEND_EVENT[7] = {0x07, 0x00, 0x00, 0xe5, 0xf1, 0x00, 0x00};
 const rom UINT8 INCOMING_DATA[2] = {0xe5 , 0x48};
 const rom UINT8 TCU_SPP_DISCONNECT_REQ[7] = {0x07, 0x00, 0x00, 0xe5, 0x04, 0x00, 0x00};
+const rom UINT8 HCI_Encryption_Key_Refresh_Complete_Event[12] = {0x0C, 0x00, 0x00, 0xE1, 0x7D, 0x05, 0x00, 0x30, 0x03, 0x00, 0x01, 0x00};
+
 //////////////////////////////////////////////////
 
 
@@ -143,8 +145,8 @@ const rom UINT8 BTAdjustAddress[6]={0x97, 0xee, 0x0a, 0x43, 0x13, 0x00};
 //////////////////////////////////////////////////
 
 UINT8    BTState;
-UINT8    ConnectStateCounter;
-UINT8    RequestConnectStateCounter;
+UINT8    BTDeviceRecordedNum;
+
 
 ////////////////////////Debug information////////////////////////
 /*
@@ -422,8 +424,6 @@ void SysInitBlueToothRadio(void)
 {
 	UINT8 TempBTValue;
 	SysBTReset();
-	ConnectStateCounter = 0;
-	RequestConnectStateCounter = 0;
 	BTRemoteData.PairFlg = FALSE;
 	DrvEepromRead((UINT16)&EESerialNumberData, (UINT8*)SerialNumberData, sizeof(SerialNumberData));
 	DrvEepromRead((UINT16)&EEBTRemoteData, (UINT8*)&BTRemoteData, sizeof(_BTRemoteData));		
@@ -448,6 +448,7 @@ UINT8 SysProcessBluetoothCommand( CHAR* pBuffer)
    UINT8   DataCheckSum;
    UINT8  TempPIDBuffer[2];
    UINT16   TempDataPID;
+   _BTRemoteData BTRemoteDataTemp;
    
    switch (BTState)
    {
@@ -498,8 +499,8 @@ UINT8 SysProcessBluetoothCommand( CHAR* pBuffer)
          		bdAddress[i] = pBuffer[14+i]; // read Local BDadress
          	}
          	SysBTSetState(WriteBDAddress);			
-            	BlueToothStatemachine();
-            	Result = 1;
+        	BlueToothStatemachine();
+        	Result = 1;
          }
          break;
 ////////////////////////////////////////////////////////////////////////////////////
@@ -507,9 +508,9 @@ UINT8 SysProcessBluetoothCommand( CHAR* pBuffer)
          memcpypgm2ram( TempBTBuffer, TCU_HCI_WRITE_BD_ADDR_RESP, sizeof(TCU_HCI_WRITE_BD_ADDR_RESP));
          if(memcmp((void *)pBuffer, (void *)TempBTBuffer,sizeof(TCU_HCI_WRITE_BD_ADDR_RESP))==0)
          {
-            	SysBTSetState(SetMode);
-            	BlueToothStatemachine();
-            	Result = 1;
+        	SysBTSetState(SetMode);
+        	BlueToothStatemachine();
+        	Result = 1;
          }
          break;
 
@@ -517,9 +518,9 @@ UINT8 SysProcessBluetoothCommand( CHAR* pBuffer)
          memcpypgm2ram( TempBTBuffer, TCU_HCI_SET_MODE_RESP, sizeof(TCU_HCI_SET_MODE_RESP));
          if(memcmp((void *)pBuffer, (void *)TempBTBuffer, sizeof(TCU_HCI_SET_MODE_RESP))==0)
          {
-            	SysBTSetState(MNGInit);
-            	BlueToothStatemachine();
-            	Result = 1;
+        	SysBTSetState(MNGInit);
+        	BlueToothStatemachine();
+        	Result = 1;
          }
          break;
 
@@ -532,9 +533,9 @@ UINT8 SysProcessBluetoothCommand( CHAR* pBuffer)
 		 commandBuffer = TempBTBuffer;      
          if(memcmp((void *)pBuffer, (void *)commandBuffer,sizeof(TCU_MNG_INIT_RESP))==0)
          {
-            	SysBTSetState(CoD);
-            	BlueToothStatemachine();
-            	Result = 1;
+        	SysBTSetState(CoD);
+        	BlueToothStatemachine();
+        	Result = 1;
          }
          break;
 
@@ -554,201 +555,147 @@ UINT8 SysProcessBluetoothCommand( CHAR* pBuffer)
          {
            	SysBTSetState(MNGScan);
            	BlueToothStatemachine();
-            	Result = 1;
+        	Result = 1;
          }
          break;
 	   case MNGScan:
-         memcpypgm2ram( TempBTBuffer, TCU_MNG_SET_SCAN_RESP, sizeof(TCU_MNG_SET_SCAN_RESP));
-         if(memcmp((void *)pBuffer, (void *)TempBTBuffer, sizeof(TCU_MNG_SET_SCAN_RESP))==0)
-	  {
-		    	SysBTSetState(BTReady);  
-			BlueToothStatemachine();
-			Result = 1;
-			
-//			CLEARSCREEN();
-//			SysDisplayString_W(DICT_TEXT_BTREADY, 1, DISPLAY_C);
-//			SysDisplayString_W(DICT_TEXT_PLEASECONNECT, 2, DISPLAY_C);			
-			
-		   OperatingState = SELECT_BLUEMENU_STATE;
-          TestState = SELECT_BLUE_MENU_INITIALIZE;
-	  }
-		 break;
+        memcpypgm2ram( TempBTBuffer, TCU_MNG_SET_SCAN_RESP, sizeof(TCU_MNG_SET_SCAN_RESP));
+        if(memcmp((void *)pBuffer, (void *)TempBTBuffer, sizeof(TCU_MNG_SET_SCAN_RESP))==0)
+        {
+            SysBTSetState(BTReady);  
+            BlueToothStatemachine();
+            Result = 1;
+
+            OperatingState = SELECT_BLUEMENU_STATE;
+            TestState = SELECT_BLUE_MENU_INITIALIZE;
+        }
+        break;
 	//////////////////////////////////Prepair for pair////////////////////////////////////////
       case BTReady:
-
-         if(RequestConnectStateCounter == 0)  
-         {
-            	memcpypgm2ram( TempBTBuffer, TCU_MNG_CONNECTION_ACCEPT_REQUEST_EVENT, sizeof(TCU_MNG_CONNECTION_ACCEPT_REQUEST_EVENT));//{0x10, 0x00, 0x00, 0xe1, 0x55, 0x09, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x18, 0x11, 0xc0};	 
-            	if(memcmp((void *)pBuffer, (void *)TempBTBuffer,sizeof(TCU_MNG_CONNECTION_ACCEPT_REQUEST_EVENT))==0)
-            	{
-               	for(i=0; i<6; i++)
-               	{
-                  		REMOTE_BDADDRESS[i]= pBuffer[7+i];// get the Remote Bdaddress
-               	}
-		       for(i=0; i<3; i++)
-		       {
-			      BTClassDevice[i]= pBuffer[13+i];
-		       }
-			  /* CLEARSCREEN();
-			   memcpypgm2ram( DisplayBuffer, BTRecievingConn, sizeof(BTRecievingConn));
-			   DisplayString_S(DisplayBuffer,2,DISPLAY_C);    */      
-			   
-               	SysBTSetState(ConnectionRequested);  
-               	BlueToothStatemachine();
-               	RequestConnectStateCounter++; 
-               	Result = 1;                    
-            }
-         }		 
+          memcpypgm2ram( TempBTBuffer, TCU_MNG_CONNECTION_ACCEPT_REQUEST_EVENT, sizeof(TCU_MNG_CONNECTION_ACCEPT_REQUEST_EVENT));//{0x10, 0x00, 0x00, 0xe1, 0x55, 0x09, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x18, 0x11, 0xc0};   
+          if(memcmp((void *)pBuffer, (void *)TempBTBuffer,sizeof(TCU_MNG_CONNECTION_ACCEPT_REQUEST_EVENT))==0)
+          {
+              for(i=0; i<6; i++)
+              {
+                  REMOTE_BDADDRESS[i]= pBuffer[7+i];// get the Remote Bdaddress
+              }
+              for(i=0; i<3; i++)
+              {
+                  BTClassDevice[i]= pBuffer[13+i];
+              }
+              if((BTRemoteData.PairFlg == TRUE) &&
+                  (memcmp((void *)BTRemoteData.RemoteBDAdress, (void *)REMOTE_BDADDRESS,sizeof(REMOTE_BDADDRESS)) == 0))
+              {
+                  SysBTSetState(ConnectionRequested);  
+                  BlueToothStatemachine();
+                  Result = 1; 
+              }
+              else
+              {
+                  BTRemoteData.PairFlg = FALSE;
+                  for(i = 0; i < BT_DEVICE_RECORDED_NUM_MAX; i++)
+                  {
+                      DrvEepromRead((UINT16)(&EEBTRemoteData[i]), (UINT8*)&BTRemoteDataTemp, sizeof(_BTRemoteData));
+                      if((BTRemoteDataTemp.PairFlg == TRUE) &&
+                          (memcmp((void *)BTRemoteDataTemp.RemoteBDAdress, (void *)REMOTE_BDADDRESS,sizeof(REMOTE_BDADDRESS)) == 0))
+                      {
+                          memcpy((void *)BTRemoteData.RemoteBDAdress, (void *)BTRemoteDataTemp.RemoteBDAdress,sizeof(BTRemoteDataTemp.RemoteBDAdress));
+                          memcpy((void *)BTRemoteData.RemoteLinkKey, (void *)BTRemoteDataTemp.RemoteLinkKey,sizeof(BTRemoteDataTemp.RemoteLinkKey));
+                          BTRemoteData.PairFlg = TRUE;
+                          BTDeviceRecordedNum = i;
+                          break;
+                      }
+                  }
+                  SysBTSetState(ConnectionRequested);  
+                  BlueToothStatemachine();
+                  Result = 1;  
+              }
+          }
          break;
 
       case ConnectionRequested:
-         if(RequestConnectStateCounter == 1)
-         {
-            memcpypgm2ram( TempBTBuffer, TCU_MNG_CONNECTION_ACCEPT_RESP, sizeof(TCU_MNG_CONNECTION_ACCEPT_RESP));
-            if(memcmp((void *)pBuffer, (void *)TempBTBuffer,sizeof(TCU_MNG_CONNECTION_ACCEPT_RESP))==0)
-            {
-			if((pBuffer[8]>0) &&(pBuffer[23]>0) &&(pBuffer[0]>0))
-			{
-           			memcpypgm2ram(TempBTBuffer,HCI_IO_Capability_Response_Event, 18 );
-            			for(i=0; i<6; i++)
-            			{
-               			TempBTBuffer[23+9+i] = REMOTE_BDADDRESS[i];
-            			}
-            			if(memcmp((void *)pBuffer[23], (void *)TempBTBuffer,sizeof(HCI_IO_Capability_Response_Event))==0)
-            			{
-					
-					RequestConnectStateCounter = 4;
-               			SysBTSetState(ConnectionRequested2);
-               			BlueToothStatemachine();
-               			Result = 1;					
-            			}
-			}
-			else
-			{
-				
-				RequestConnectStateCounter++;
-               		Result = 1;
-               		SysBTSetState(BTReady2);
-               		BlueToothStatemachine();
-			}
-			/// Start timer 20 second
-			   	DrvTimer0SetCounter(TIMER0_SEC_COUNTER_1, 20);	// New adding
-//			 	OperatingState = BT_CONNECT;						// New adding
-//                  		TestState = BLUETOOTH_PAIR_COMPLETE;			// New adding
-			//
-            }
-         }	 
+          memcpypgm2ram( TempBTBuffer, TCU_MNG_CONNECTION_ACCEPT_RESP, sizeof(TCU_MNG_CONNECTION_ACCEPT_RESP));
+          if(memcmp((void *)pBuffer, (void *)TempBTBuffer,sizeof(TCU_MNG_CONNECTION_ACCEPT_RESP))==0)
+          {
+              Result = 1;
+              SysBTSetState(BTReady2);
+              BlueToothStatemachine();
+          }
          break;
 
       case BTReady2: 	
-         if((RequestConnectStateCounter == 2))  
-         {   
-		////////////////////////////SPP Connect Event second BT 4.0/////////////////////////////////////
-         	memcpypgm2ram(TempBTBuffer,TCU_SPP_CONNECT_EVENT2, sizeof(TCU_SPP_CONNECT_EVENT2) );
-            if((memcmp((void *)&pBuffer[3], (void *)TempBTBuffer, sizeof(TCU_SPP_CONNECT_EVENT2))==0)&&
-		   (memcmp((void *)&pBuffer[8], (void *)REMOTE_BDADDRESS, sizeof(REMOTE_BDADDRESS))==0))	
-            {   
-               RequestConnectStateCounter = 13;
-		/*   OperatingState = BT_CONNECT;
-               TestState = BLUETOOTH_END;
-		*/	   
-		  DrvTimer0SetCounter(TIMER0_SEC_COUNTER_2, 1);	   
-		  SysBTSetState(BTSPPReady3);
-               BlueToothStatemachine();
-               Result = 1;
-            }		
-		////////////////////////////This for BT 2.0 Version////////////////////////////////////////////			
-		
-         	memcpypgm2ram(TempBTBuffer,TCU_MNG_CONNECTION_STATUS_EVENT, 15 );
-            for(i=0; i<6; i++)
-            {
-               TempBTBuffer[8+i] = REMOTE_BDADDRESS[i];
-            }
-            if(memcmp((void *)pBuffer, (void *)TempBTBuffer,sizeof(TCU_MNG_CONNECTION_STATUS_EVENT))==0)
-            {
-               RequestConnectStateCounter++;
-               SysBTSetState(BTReady3);
-               BlueToothStatemachine();
-               Result = 1;
-            }
-///////////////////////////////////This for BT 4.1 Version////////////////////////////////////////////			
-           memcpypgm2ram(TempBTBuffer,HCI_IO_Capability_Response_Event, 18 );
-            for(i=0; i<6; i++)
-            {
-               TempBTBuffer[9+i] = REMOTE_BDADDRESS[i];
-            }
-	      commandBuffer = TempBTBuffer;	
-            if(memcmp((void *)pBuffer, (void *)commandBuffer,sizeof(HCI_IO_Capability_Response_Event))==0)
-            {
-			/*CLEARSCREEN();
-			memcpypgm2ram( DisplayBuffer, BTRemoteCapsRec, sizeof(BTRemoteCapsRec));
-			DisplayString_S(DisplayBuffer,2,DISPLAY_C);  */
-               	RequestConnectStateCounter = 4;
-               	SysBTSetState(ConnectionRequested2);
-               	BlueToothStatemachine();
-               	Result = 1;
-            }			
-			
-         }
+          memcpypgm2ram(TempBTBuffer,TCU_MNG_CONNECTION_STATUS_EVENT, 15 );
+          for(i=0; i<6; i++)
+          {
+             TempBTBuffer[8+i] = REMOTE_BDADDRESS[i];
+          }
+          if(memcmp((void *)pBuffer, (void *)TempBTBuffer, 14)==0)
+          {
+              SysBTSetState(BTReady3);
+              BlueToothStatemachine();
+              Result = 1;
+          }
          break;
 
       case BTReady3:
-       if(RequestConnectStateCounter == 3)
-         {
-		////////////////////////////SPP Connect Event//////////////////////////
-         	memcpypgm2ram(TempBTBuffer,TCU_SPP_CONNECT_EVENT2, sizeof(TCU_SPP_CONNECT_EVENT2) );
-            if((memcmp((void *)&pBuffer[3], (void *)TempBTBuffer, sizeof(TCU_SPP_CONNECT_EVENT2))==0)&&
-		   (memcmp((void *)&pBuffer[8], (void *)REMOTE_BDADDRESS, sizeof(REMOTE_BDADDRESS))==0))	
-            {   
-		  DrvTimer0SetCounter(TIMER0_SEC_COUNTER_2, 1);	   
-               RequestConnectStateCounter = 13;
-               SysBTSetState(BTSPPReady3);
-               BlueToothStatemachine();
-               Result = 1;
-            }
-		////////////////////////////Pair Event///////////////////////////////////			
-	   
-            memcpypgm2ram(TempBTBuffer,HCI_IO_Capability_Response_Event, 18 );
-            for(i=0; i<6; i++)
-            {
-               	TempBTBuffer[9+i] = REMOTE_BDADDRESS[i];
-            }
-            commandBuffer = TempBTBuffer;
-            if(memcmp((void *)pBuffer, (void *)commandBuffer,sizeof(HCI_IO_Capability_Response_Event))==0)
-            {
-			/*CLEARSCREEN();
-			memcpypgm2ram( DisplayBuffer, BTRemoteCapsRec, sizeof(BTRemoteCapsRec));
-			DisplayString_S(DisplayBuffer,2,DISPLAY_C);  
-			*/
-               	RequestConnectStateCounter++;
-               	SysBTSetState(ConnectionRequested2);
-               	BlueToothStatemachine();
-               	Result = 1;
-            }
+          memcpypgm2ram(TempBTBuffer,HCI_IO_Capability_Response_Event, 18 );
+          for(i=0; i<6; i++)
+          {
+              TempBTBuffer[9+i] = REMOTE_BDADDRESS[i];
+          }
+          commandBuffer = TempBTBuffer;
+          if(memcmp((void *)pBuffer, (void *)commandBuffer,15)==0)
+          {
+              SysBTSetState(REMOTE_DEVICE_NOTIFY);
+              BlueToothStatemachine();
+              Result = 1;
+              break;
+          }
+          else
+          {
+              // the bluetooth device is found and the link key is correct
+              memcpypgm2ram(TempBTBuffer,TCU_SPP_CONNECT_EVENT2, sizeof(TCU_SPP_CONNECT_EVENT2) );
+              if((memcmp((void *)&pBuffer[3], (void *)TempBTBuffer, sizeof(TCU_SPP_CONNECT_EVENT2))==0)&&
+                 (memcmp((void *)&pBuffer[8], (void *)REMOTE_BDADDRESS, sizeof(REMOTE_BDADDRESS))==0))    
+              {   
+                 SysBTSetState(DEF_TCU_MNG_SSP_INFO_EVENT);
+                 BlueToothStatemachine();
+                 Result = 1;
+              }
+          }
+        break; 
+
+      case REMOTE_DEVICE_NOTIFY:
             memcpypgm2ram(TempBTBuffer,TCU_MNG_REMOTE_DEVICE_NAME_AUTO_NOTIFY_EVENT,20);
             for(i=0; i<6; i++)
             {
                	TempBTBuffer[7+i] = REMOTE_BDADDRESS[i];
             }
-            if(memcmp((void *)&pBuffer[3], (void *)&TempBTBuffer[3],2)==0)
+            if((memcmp((void *)(pBuffer + 3), (void *)(TempBTBuffer + 3),2)==0)&&
+                (memcmp((void *)(pBuffer + 7), (void *)(TempBTBuffer + 7),6)==0))
             {
-
-               	/*CLEARSCREEN();
-			memcpypgm2ram( DisplayBuffer, BTRemoteCapsRec, sizeof(BTRemoteCapsRec));
-			DisplayString_S(DisplayBuffer,2,DISPLAY_C); */
-		  	//DrvUsartSendData(USART_PORT_1, TempUsart1[BTReady3], 2);	   
-               	RequestConnectStateCounter++;
-               	SysBTSetState(ConnectionRequested2);
+               	SysBTSetState(HCI_IO_CAPABILITY_REQUEST_EVENT);
                	BlueToothStatemachine();
                	Result = 1;
-            }  
-         }
-      break;  
+            }
+            break;
+
+      case HCI_IO_CAPABILITY_REQUEST_EVENT:
+          memcpypgm2ram(TempBTBuffer,HCI_IO_Capability_Request_Event,15);
+          for(i=0; i<6; i++)
+          {
+              TempBTBuffer[9+i] = REMOTE_BDADDRESS[i];
+          }
+          if(memcmp((void *)pBuffer, (void *)TempBTBuffer,sizeof(HCI_IO_Capability_Request_Event))==0)
+          {
+              SysBTSetState(ConnectionRequested2);
+              BlueToothStatemachine();
+              Result = 1;
+          }
+          break;
+        
       case ConnectionRequested2:
-         
-         if(RequestConnectStateCounter == 4)
-         {
-         	memcpypgm2ram(TempBTBuffer,TCU_MNG_SSP_SET_RESP_HCI_IO_Capability_Request_Reply, 21 );
+        	memcpypgm2ram(TempBTBuffer,TCU_MNG_SSP_SET_RESP_HCI_IO_Capability_Request_Reply, 21 );
             for(i=0; i<6; i++) 
             {
                TempBTBuffer[15+i] = REMOTE_BDADDRESS[i];
@@ -756,437 +703,350 @@ UINT8 SysProcessBluetoothCommand( CHAR* pBuffer)
             commandBuffer = TempBTBuffer;
             if(memcmp((void *)pBuffer, (void *)commandBuffer,sizeof(TCU_MNG_SSP_SET_RESP_HCI_IO_Capability_Request_Reply))==0)
             {
-               RequestConnectStateCounter++;
                SysBTSetState(BTReady4);
                BlueToothStatemachine();
                Result = 1;
-            }
-         }		 		 
-         break;
+            }	 		 
+            break;
+            
       case BTReady4:
-	  if(RequestConnectStateCounter == 5)
-	  {
-         	memcpypgm2ram(TempBTBuffer,HCI_IO_User_Confirmation_Request_Event,15);
-         	for(i=0; i<6; i++)
-         	{
-            		TempBTBuffer[9+i] = REMOTE_BDADDRESS[i];
-         	}
-         	commandBuffer = TempBTBuffer;
-         
-         	if(memcmp((void *)pBuffer, (void *)commandBuffer,sizeof(HCI_IO_User_Confirmation_Request_Event))==0)
-         	{
-            		RequestConnectStateCounter++;
-            		SysBTSetState(ControlSSP2);
-            		BlueToothStatemachine();
-            		Result = 1;
-         	}    
-      }
-      break;
+          memcpypgm2ram(TempBTBuffer,HCI_IO_User_Confirmation_Request_Event,15);
+          for(i=0; i<6; i++)
+          {
+                  TempBTBuffer[9+i] = REMOTE_BDADDRESS[i];
+          }
+          commandBuffer = TempBTBuffer;
+          
+          if(memcmp((void *)pBuffer, (void *)commandBuffer,sizeof(HCI_IO_User_Confirmation_Request_Event))==0)
+          {
+              SysBTSetState(ControlSSP2);
+              BlueToothStatemachine();
+              Result = 1;
+          } 
+          break;
+          
       case ControlSSP2:
-      	  if(RequestConnectStateCounter == 6)
-	  {
-         	memcpypgm2ram(TempBTBuffer,TCU_MNG_SSP_SET_RESP_HCI_User_Confirmation_Request_Reply,21);
-         	for(i=0; i<6; i++)
-         	{
-            		TempBTBuffer[15+i] = REMOTE_BDADDRESS[i];
-         	}
-         	commandBuffer = TempBTBuffer;
-         	if(memcmp((void *)pBuffer, (void *)commandBuffer,sizeof(TCU_MNG_SSP_SET_RESP_HCI_User_Confirmation_Request_Reply))==0)
-         	{
-            		RequestConnectStateCounter++;
-            		SysBTSetState(PairingComplete);
-            		BlueToothStatemachine();
-            		Result = 1;
-         	}
-      } 
-      break;
+          memcpypgm2ram(TempBTBuffer,TCU_MNG_SSP_SET_RESP_HCI_User_Confirmation_Request_Reply,21);
+          for(i=0; i<6; i++)
+          {
+              TempBTBuffer[15+i] = REMOTE_BDADDRESS[i];
+          }
+          commandBuffer = TempBTBuffer;
+          if(memcmp((void *)pBuffer, (void *)commandBuffer,sizeof(TCU_MNG_SSP_SET_RESP_HCI_User_Confirmation_Request_Reply))==0)
+          {
+              SysBTSetState(PairingComplete);
+              BlueToothStatemachine();
+              Result = 1;
+          }
+          break;
+          
       case PairingComplete:
-      	  if(RequestConnectStateCounter == 7)
-	  {
-         memcpypgm2ram(TempBTBuffer,HCI_Simple_Pairing_Complete_Event,16);
-         for(i=0; i<6; i++)
-         {
-            TempBTBuffer[10+i] = REMOTE_BDADDRESS[i];
-         }
-         commandBuffer = TempBTBuffer;
-         if(memcmp((void *)pBuffer, (void *)commandBuffer,sizeof(HCI_Simple_Pairing_Complete_Event))==0)
-         {
-              RequestConnectStateCounter++;
+          memcpypgm2ram(TempBTBuffer,HCI_Simple_Pairing_Complete_Event,16);
+          for(i=0; i<6; i++)
+          {
+              TempBTBuffer[10+i] = REMOTE_BDADDRESS[i];
+          }
+          commandBuffer = TempBTBuffer;
+          if(memcmp((void *)pBuffer, (void *)commandBuffer,sizeof(HCI_Simple_Pairing_Complete_Event))==0)
+          {
               SysBTSetState(ControlSSP3);
               BlueToothStatemachine();
               Result = 1;
-         }
-	////////////////////////////////Cancel pair process///////////////////////////////		 
-           memcpypgm2ram(TempBTBuffer,HCI_Simple_Pairing_Complete_Cancel_Event,16);
-         for(i=0; i<6; i++)
-         {
-            TempBTBuffer[10+i] = REMOTE_BDADDRESS[i];
-         }
-         if(memcmp((void *)pBuffer, (void *)TempBTBuffer,sizeof(HCI_Simple_Pairing_Complete_Cancel_Event))==0)
-         {
-			CLEARSCREEN();// New adding
-			SysDisplayString_W(DICT_TEXT_CANCELPAIRING, 1, DISPLAY_C);
-			SysDisplayString_W(DICT_TEXT_PLEASEWAIT, 2, DISPLAY_C);
-			DrvTimer0SetCounter(TIMER0_SEC_COUNTER_1, 1);
-			OperatingState = BT_CONNECT;
-                  	TestState = BLUETOOTH_PAIR_COMPLETE;// New adding
-					
-              	Result = 1;
-         }
-		 
-   	}    
-         break;
+          }
+          else
+          {   // select Cancel on the Mobile or PC
+              memcpypgm2ram(TempBTBuffer,HCI_Simple_Pairing_Complete_Cancel_Event,16);
+              for(i=0; i<6; i++)
+              {
+                  TempBTBuffer[10+i] = REMOTE_BDADDRESS[i];
+              }
+              commandBuffer = TempBTBuffer;
+              if(memcmp((void *)pBuffer, (void *)commandBuffer,sizeof(HCI_Simple_Pairing_Complete_Cancel_Event))==0)
+              {
+                  SysBTSetState(ControlSSP3);
+                  BlueToothStatemachine();
+                  Result = 1;
+              }
+          }
+          break;
+         
       case ControlSSP3:
-      	  if(RequestConnectStateCounter == 8)
-	  {
-         	memcpypgm2ram(TempBTBuffer,TCU_MNG_CONNECTION_STATUS_EVENT3,15);
-         	for(i=0; i<6; i++)
-         	{
-            		TempBTBuffer[8+i] = REMOTE_BDADDRESS[i];
-         	}
-         	if(memcmp((void *)pBuffer, (void *)TempBTBuffer,sizeof(TCU_MNG_CONNECTION_STATUS_EVENT3))==0)
-         	{
-			for(i=0; i<16; i++)
-			{
-                    	REMOTE_LINK_KEY[i] = pBuffer[15+i];
-               	}   
-			//store Remote_Link_Key  DrvEepromWrite()
-			BTRemoteData.PairFlg = TRUE;
-			memcpy((void *)&BTRemoteData.RemoteLinkKey, (void *)REMOTE_LINK_KEY, sizeof(REMOTE_LINK_KEY));
-			memcpy((void *)&BTRemoteData.RemoteBDAdress, (void *)REMOTE_BDADDRESS, sizeof(REMOTE_BDADDRESS));
-         	DrvEepromWrite((UINT16)&EEBTRemoteData, (UINT8*)&BTRemoteData, sizeof(_BTRemoteData));			
-
-			/*CLEARSCREEN();
-			SysDisplayString_W(DICT_TEXT_BTPAIRDONE, 1, DISPLAY_C);
-			SysDisplayString_W(DICT_TEXT_PLEASECONNECT, 2, DISPLAY_C);	*/
-			
-			RequestConnectStateCounter++;
-			//RequestConnectStateCounter = 10;
-            		//SysBTSetState(BTSPPReady);
-            		//BlueToothStatemachine();            		
-            		Result = 1;
-         	}
-   	  }    
-     	  else if(RequestConnectStateCounter == 9)
-	  {
-         	memcpypgm2ram(TempBTBuffer,TCU_MNG_CONNECTION_STATUS_EVENT2,15);
-         	for(i=0; i<6; i++)
-         	{
-            		TempBTBuffer[8+i] = REMOTE_BDADDRESS[i];
-         	}
-         	if(memcmp((void *)pBuffer, (void *)TempBTBuffer,sizeof(TCU_MNG_CONNECTION_STATUS_EVENT2))==0)
-         	{
-			CLEARSCREEN();
-			SysDisplayString_W(DICT_TEXT_BTPAIRDONE, 1, DISPLAY_C);
-			SysDisplayString_W(DICT_TEXT_PLEASECONNECT, 2, DISPLAY_C);				
-            		RequestConnectStateCounter++;
-			OperatingState = BT_CONNECT;		// New adding
-                  	TestState = BLUETOOTH_END;		// New adding
-						
-            		SysBTSetState(BTSPPReady);
-            		BlueToothStatemachine();
-            		Result = 1;
-         	}
-			
-   	  }  
-		  
-         break;	
-      case BTSPPReady:
-	   if(RequestConnectStateCounter == 10)  
-         {
-        memcpypgm2ram( TempBTBuffer, TCU_MNG_CONNECTION_ACCEPT_REQUEST_EVENT, sizeof(TCU_MNG_CONNECTION_ACCEPT_REQUEST_EVENT)); 
-        for(i=0; i<16; i++)
-        {
-        	TempBTBuffer[7+i] = REMOTE_BDADDRESS[i];
-        }
-		for(i=0; i<3; i++)
-		{
-			TempBTBuffer[13+i]=BTClassDevice[i];
-		} 			 
-            if(memcmp((void *)pBuffer, (void *)TempBTBuffer, 13)==0)
-            {           
-               SysBTSetState(SPPConnectSuccess);  
-               BlueToothStatemachine();
-               RequestConnectStateCounter++; 
-               Result = 1;                    
-            }
-         }		 
-         break;
-      	   case SPPConnectSuccess:
-	   if(RequestConnectStateCounter == 11)  
-         {		   	
-            	memcpypgm2ram( TempBTBuffer, TCU_MNG_CONNECTION_ACCEPT_RESP, sizeof(TCU_MNG_CONNECTION_ACCEPT_RESP));
-            	if(memcmp((void *)pBuffer, (void *)TempBTBuffer,sizeof(TCU_MNG_CONNECTION_ACCEPT_RESP))==0)
-            	{
-               	SysBTSetState(BTSPPReady2);
-               	BlueToothStatemachine();
-               	RequestConnectStateCounter++;
-               	Result = 1;			   
-            	}							
-	   }	
-	  break;
-///////////////////////////////////////////////////////////////////////////////////////////
-	  case BTSPPReady2:
-	   if(RequestConnectStateCounter == 12)  
-         {
-         	memcpypgm2ram(TempBTBuffer,TCU_SPP_CONNECT_EVENT2, sizeof(TCU_SPP_CONNECT_EVENT2) );
-            if((memcmp((void *)&pBuffer[3], (void *)TempBTBuffer, sizeof(TCU_SPP_CONNECT_EVENT2))==0)&&
-		       (memcmp((void *)&pBuffer[8], (void *)REMOTE_BDADDRESS, sizeof(REMOTE_BDADDRESS))==0))	
-            {   
-               RequestConnectStateCounter++;
-               SysBTSetState(BTSPPReady3);
-               BlueToothStatemachine();
-               Result = 1;
-		  //DrvTimer0SetCounter(TIMER0_SEC_COUNTER_2, 1);	   
-            }
-			
-	   }
-	   break;
-	//////////////////////////////////////////////////////////////////////////////////////
-	case BTSPPReady3:
-	   	   //////////Send Data Battery TestData or SelfTest send data"CBT-300 README" ///////////////////////
-	   	if(RequestConnectStateCounter == 13) //&& DrvTimer0CounterDone(TIMER0_SEC_COUNTER_2))
-         	{	
-//				SysBTSendData(InitialStartData , 7);
-				RequestConnectStateCounter++;
-            			CLEARSCREEN();
-         			memset(DisplayBuffer,0x00,sizeof(DisplayBuffer));
-         			memcpypgm2ram((void*)DisplayBuffer,BTConnectComplete,sizeof(BTConnectComplete));
-				SysDisplayString(DisplayBuffer,1,DISPLAY_C);	
-				
-//				AppData.BTSendCompleteId = BT_SEND_DATA_COMPLETED_YES;
-//				DrvEepromWrite((UINT16)EEAppDataAddress+3, (UINT8*)&AppData.BTSendCompleteId, sizeof(AppData.BTSendCompleteId));
-				RequestConnectStateCounter++;
-				SysBTSetState(WaitingState);
-				BlueToothStatemachine();
-				Result = 1;
-		}
-
-		 break;
-	      case SPPDisconnect:  
-
-	     	if(RequestConnectStateCounter == 15)
-	     	{
-			RequestConnectStateCounter++;
-			DrvTimer0SetCounter(TIMER0_SEC_COUNTER_2, 1);
-	     	}
-		else if(RequestConnectStateCounter == 16)
-		{
-			if(DrvTimer0CounterDone(TIMER0_SEC_COUNTER_2))
-			{
-				if(EOLTestFlg == FALSE)
-         			{
-                  			OperatingState = TEST_COMPLETE;
-                  			TestState = TEST_COMPLETE_REVIEW;				
-				}
-				else
-				{
-                  			OperatingState = BLUETOOTH_TEST;
-                  			TestState = BT_TEST_COMPLETED;				
-				}
-				RequestConnectStateCounter++;
-			}
-		}
-	         	
-         	break;	 
-	   case WaitingState:
-
-            	/****READY TO EXCEPT MESSAGES AND PAIRED ***********/
-	   	/*  	if(pBuffer[0]>0)
-	     	{
-			DrvUsartSendData(USART_PORT_1, pBuffer, 64);////for debug
-	     	}   */
-		//////////////////////Disconnect Process///////////////////////
-         	memcpypgm2ram(TempBTBuffer,TCU_SPP_DISCONNECT_EVENT2,sizeof(TCU_SPP_DISCONNECT_EVENT2));
-    	   	for(i=0; i<6; i++) 
-    	   	{
-		      TempBTBuffer[8+i] = REMOTE_BDADDRESS[i];
-		 	}
-          	if(0 == memcmp((void *)&pBuffer[0x0f], (void *)TempBTBuffer,sizeof(TCU_SPP_DISCONNECT_EVENT2)))
-	      {
-	         	Result = 1;
-			RequestConnectStateCounter = 0;
-		    	SysBTSetState(BTReady);  
-			BlueToothStatemachine();
-			
-			CLEARSCREEN();
-			SysDisplayString_W(DICT_TEXT_BTREADY, 1, DISPLAY_C);
-			SysDisplayString_W(DICT_TEXT_PLEASECONNECT, 2, DISPLAY_C);				
-	      }
-	   	   //////////////////////Receive Data and Display ///////////////////////
-          
-		
-	   	   //////////////////////Receive Data and Display ///////////////////////
-          memcpypgm2ram(TempBTBuffer,INCOMING_DATA, sizeof(INCOMING_DATA));
-          if(0 == memcmp((void *)&pBuffer[0x03], (void *)TempBTBuffer,sizeof(INCOMING_DATA))) //New BlueSPP old Verson5.4.3
+          if(pBuffer[0] == 0x20)   // User select Allow on the Mobile Phone or PC
           {
+               memcpypgm2ram(TempBTBuffer,TCU_MNG_CONNECTION_STATUS_EVENT3,15);
+               for(i=0; i<6; i++)
+               {
+                   TempBTBuffer[8+i] = REMOTE_BDADDRESS[i];
+               }
+               if(memcmp((void *)pBuffer, (void *)TempBTBuffer,sizeof(TCU_MNG_CONNECTION_STATUS_EVENT3))==0)
+               {
+                   for(i=0; i<16; i++)
+                   {
+                       REMOTE_LINK_KEY[i] = pBuffer[15+i];
+                   }   
+                   //store Remote_Link_Key  DrvEepromWrite()
+                   memcpy((void *)&BTRemoteData.RemoteLinkKey, (void *)REMOTE_LINK_KEY, sizeof(REMOTE_LINK_KEY));
+                   memcpy((void *)&BTRemoteData.RemoteBDAdress, (void *)REMOTE_BDADDRESS, sizeof(REMOTE_BDADDRESS));
+                   if(BTRemoteData.PairFlg == FALSE)
+                   {
+                       BTRemoteData.PairFlg = TRUE;
+                       for(i = 0; i < BT_DEVICE_RECORDED_NUM_MAX; i++)
+                       {
+                           DrvEepromRead((UINT16)(&EEBTRemoteData[i]), (UINT8*)&BTRemoteDataTemp, sizeof(_BTRemoteData));
+                           if(BTRemoteDataTemp.PairFlg != 0x01)
+                           {
+                               // record the BT information in the EEPROM
+                               DrvEepromWrite((UINT16)(&EEBTRemoteData[i]), (UINT8*)&BTRemoteData, sizeof(_BTRemoteData));
+                               break;
+                           }
+                       }
+                       if(i == BT_DEVICE_RECORDED_NUM_MAX)
+                       {
+                           // all EEPROM space are stored, recover the first blank
+                           DrvEepromWrite((UINT16)(&EEBTRemoteData), (UINT8*)&BTRemoteData, sizeof(_BTRemoteData));
+                       }
+                   }
+                   else 
+                   {
+                       // we need to update the link key data
+                       DrvEepromWrite((UINT16)(&EEBTRemoteData[BTDeviceRecordedNum]), (UINT8*)&BTRemoteData, sizeof(_BTRemoteData));
+                   }
+                   SysBTSetState(BT_PAIR_DONE);
+                   BlueToothStatemachine();
+                   Result = 1;
+               }
+          }
+          else if(pBuffer[0] == 0x0F)  // User select Cancel on the PC
+          {
+              memcpypgm2ram(TempBTBuffer,TCU_MNG_CONNECTION_STATUS_EVENT2,15);
+              for(i=0; i<6; i++)
+              {
+                  TempBTBuffer[8+i] = REMOTE_BDADDRESS[i];
+              }
+              if(memcmp((void *)pBuffer, (void *)TempBTBuffer,sizeof(TCU_MNG_CONNECTION_STATUS_EVENT2))==0)
+              {
+                    SysBTSetState(BTReady);      // waiting for re-pair require
+                    BlueToothStatemachine();
+                    Result = 1;
 
-	   if(pBuffer[0x09] == DATA_LINK_ESCAPE)
-	   { 
-		PtrCounter = 0x09+1;
-		DataCheckSum = 0;
+                    CLEARSCREEN();// New adding
+                    SysDisplayString_W(DICT_TEXT_CANCELPAIRING, 1, DISPLAY_C);
+                    SysDisplayString_W(DICT_TEXT_PLEASEWAIT, 2, DISPLAY_C);
+                    DrvTimer0SetCounter(TIMER0_SEC_COUNTER_1, 1);
+                    OperatingState = BT_CONNECT;
+                    TestState = BLUETOOTH_PAIR_COMPLETE;// New adding
+              }
+          }
+         break;	
+         
+     case BT_PAIR_DONE:   // judge if only pair done or SPP connected
+          memcpypgm2ram(TempBTBuffer,TCU_MNG_CONNECTION_STATUS_EVENT2,15);
+          for(i=0; i<6; i++)
+          {
+              TempBTBuffer[8+i] = REMOTE_BDADDRESS[i];
+          }
+          if(memcmp((void *)pBuffer, (void *)TempBTBuffer,sizeof(TCU_MNG_CONNECTION_STATUS_EVENT2))==0)
+          {           
+            SysBTSetState(BTReady);
+            BlueToothStatemachine();
+            Result = 1;
 
-		if(pBuffer[PtrCounter] !=DATA_LINK_ESCAPE &&
-			pBuffer[PtrCounter+1] !=DATA_LINK_ESCAPE)
-		{
-			TempBTValue = pBuffer[PtrCounter];
-			DataPID = (UINT16)((((UINT16)TempBTValue<<8)&0xFF00)|pBuffer[PtrCounter+1]); //get PID
-			DataCheckSum += pBuffer[PtrCounter++];
-			DataCheckSum += pBuffer[PtrCounter++];
-			
-			TempBTValue = pBuffer[PtrCounter];
-			DataLength = (UINT16)((((UINT16)TempBTValue<<8)&0xFF00)|pBuffer[PtrCounter+1]); //get length
-			DataCheckSum += pBuffer[PtrCounter++];
-			DataCheckSum += pBuffer[PtrCounter++];
-
-			for(i=0; i<DataLength; i++)
-			{
-				if(pBuffer[PtrCounter+i] == DATA_LINK_ESCAPE)
-				{
-					if(pBuffer[PtrCounter+i+1] == DATA_LINK_ESCAPE)
-					{
-						DataCheckSum += pBuffer[PtrCounter+i];
-						PtrCounter++;
-					}
-					else
-					{
-						// print error Message
-						PtrCounter++;
-						break;
-					}
-				}
-				else
-					DataCheckSum += pBuffer[PtrCounter+i];
-					
-			}
-			
-			DataCheckSum = 0xFF - DataCheckSum;
-			if(DataCheckSum == DATA_LINK_ESCAPE)
-				PtrCounter++;
-			PtrCounter = PtrCounter+i;
-			if(DataCheckSum == pBuffer[PtrCounter] &&
-				pBuffer[PtrCounter+1] == DATA_LINK_ESCAPE &&
-				pBuffer[PtrCounter+2] == END_OF_TEXT)
-			{
-
-				if( DataPID != PID_ACK && DataPID != PID_NAK)
-				{
-					TempPIDBuffer[0]=(UINT8)(DataPID>>8)&0xFF;
-					TempPIDBuffer[1]=(UINT8)(DataPID&0x00FF);				
-      					SysWrapperWrapMessage(TempPIDBuffer, 2, PID_ACK); // PID ACK Response master
-				}
-				switch(DataPID)
-   				{
-      					case PID_INITIAL_BATTERY_TEST:
-							
-			      			CLEARSCREEN();
-         					memset(DisplayBuffer,0x00,sizeof(DisplayBuffer));
-         					memcpypgm2ram((void*)DisplayBuffer,BatteryTestInitial,sizeof(BatteryTestInitial));
-							SysDisplayString(DisplayBuffer,1,DISPLAY_C);	
-						
-						PtrCounter = 0x09+5;	
-						Battery.BatteryTypeId = pBuffer[PtrCounter++];
-						TempBTValue = pBuffer[PtrCounter];
-						Battery.RatedCCA = (UINT16)((((UINT16)TempBTValue<<8)&0xFF00)|pBuffer[PtrCounter+1]);
-						PtrCounter +=2;
-						Battery.BatJISIndex = pBuffer[PtrCounter++];
-						Battery.AlgorithmId = pBuffer[PtrCounter];
-
-         				itoabase(Battery.BatteryTypeId, DisplayBuffer,4, 10);
-   						strcatpgm2ram((char *)DisplayBuffer, ":TYPE");
-						DisplayString_S(DisplayBuffer, 3, DISPLAY_N);
-						
-         				itoabase(Battery.BatJISIndex, DisplayBuffer,4, 10);
-   						strcatpgm2ram((char *)DisplayBuffer, ":INDEX");
-						DisplayString_S(DisplayBuffer, 3, DISPLAY_R);
-						// display Battery Rating
-   						itoabase(Battery.RatedCCA, DisplayBuffer,4, 10);
-						strcatpgm2ram((char *)DisplayBuffer, "CCA ");
-						DisplayString_S(DisplayBuffer, 4, DISPLAY_N);
-						
-   						itoabase(Battery.AlgorithmId, DisplayBuffer,4, 10);
-						strcatpgm2ram((char *)DisplayBuffer, ":ALG");
-						DisplayString_S(DisplayBuffer, 4, DISPLAY_R);	
-						
-      					SPPBatteryTestState = BATTERY_STATE_READY;
-						break;
-      					case PID_PERFORM_BATTERY_TEST:
-						PtrCounter = 0x09+5;	
-						if(pBuffer[PtrCounter] == 0)
-						{
-							StartBatteryTestFlg = FALSE;
-							OperatingState = BATTERY_TEST;
-         					TestState = BATTERY_TEST_INITIALIZE;
-							SPPBatteryTestState = BATTERY_STATE_BUSY;
-						}
-
-						break;
-      					case PID_ACK://PID_RETURN_BATTERY_RESULT:
-						PtrCounter = 0x09+5;	
-						TempDataPID = (UINT16)((pBuffer[PtrCounter]>>8)|pBuffer[PtrCounter+1]);
-						if(TempDataPID == PID_RETURN_BATTERY_RESULT)	
-						{
-			      				CLEARSCREEN();
-         						memset(DisplayBuffer,0x00,sizeof(DisplayBuffer));
-         						memcpypgm2ram((void*)DisplayBuffer,BatterySendDataFinish,sizeof(BatterySendDataFinish));
-								SysDisplayString(DisplayBuffer,1,DISPLAY_C);
-						}
-						break;
-//      					case PID_RETURN_BATTERY_RESULT:
-//						PtrCounter = 0x09+5;	
-//						if(pBuffer[PtrCounter] == 0x80)
-//						{
-//						}
-//						break;
-      					case PID_PACKET_REQUEST:
-						PtrCounter = 0x09+5;	
-						TempDataPID = (UINT16)((pBuffer[PtrCounter]>>8)|pBuffer[PtrCounter+1]);						
-						if(TempDataPID == PID_CHECK_STATE)
-						{
-      							SysWrapperWrapMessage(&SPPBatteryTestState, 1, PID_CHECK_STATE);
-						}
-						else if(TempDataPID == PID_RETURN_BATTERY_RESULT)
-						{
-							if(StartBatteryTestFlg == TRUE)
-							{
-	        					tempBuffer[0]= Battery.Result;
-		 						tempBuffer[1]= (Battery.VoltsCD>>8)&0xFF; 
-		 						tempBuffer[2]= Battery.VoltsCD &0xFF;
-		 						tempBuffer[3]= (Battery.CCA>>8)&0xFF;
-		 						tempBuffer[4]= Battery.CCA&0xFF;
-		 						tempBuffer[5]= Battery.SOH&0xFF;
-		 						tempBuffer[6]= Battery.SOC&0xFF;
-      							SysWrapperWrapMessage(tempBuffer, 7, PID_RETURN_BATTERY_RESULT);
-							}
-						}
-						break;
-						
-					default:
-						break;
-						
-				}
-
-			}
-			
-		}
-
-
-
-	   }
-	
+            CLEARSCREEN();
+            SysDisplayString_W(DICT_TEXT_BTPAIRDONE, 1, DISPLAY_C);
+            SysDisplayString_W(DICT_TEXT_PLEASECONNECT, 2, DISPLAY_C);		
+            OperatingState = BT_CONNECT;		// New adding
+            TestState = BLUETOOTH_END;		// New adding
           }
          break;
+         
+     case DEF_TCU_MNG_SSP_INFO_EVENT:
+        memcpypgm2ram( TempBTBuffer, HCI_Encryption_Key_Refresh_Complete_Event, sizeof(HCI_Encryption_Key_Refresh_Complete_Event));
+        if(memcmp((void *)pBuffer, (void *)TempBTBuffer,sizeof(HCI_Encryption_Key_Refresh_Complete_Event))==0)
+        {
+            SysBTSetState(WaitingState);
+            BlueToothStatemachine();
+            Result = 1;     
+            
+            CLEARSCREEN();
+            memset(DisplayBuffer,0x00,sizeof(DisplayBuffer));
+            memcpypgm2ram((void*)DisplayBuffer,BTConnectComplete,sizeof(BTConnectComplete));
+            SysDisplayString(DisplayBuffer,1,DISPLAY_C);	
+        } 
+        break;
+            
+	   case WaitingState:
+		//////////////////////Disconnect Process///////////////////////
+            memcpypgm2ram(TempBTBuffer,TCU_SPP_DISCONNECT_EVENT2,sizeof(TCU_SPP_DISCONNECT_EVENT2));
+            for(i=0; i<6; i++) 
+            {
+                TempBTBuffer[8+i] = REMOTE_BDADDRESS[i];
+            }
+            if(0 == memcmp((void *)&pBuffer[0x0f], (void *)TempBTBuffer,sizeof(TCU_SPP_DISCONNECT_EVENT2)))
+            {
+                Result = 1;
+                SysBTSetState(BTReady);  
+                BlueToothStatemachine();
+
+                CLEARSCREEN();
+                SysDisplayString_W(DICT_TEXT_BTREADY, 1, DISPLAY_C);
+                SysDisplayString_W(DICT_TEXT_PLEASECONNECT, 2, DISPLAY_C);				
+            }
+	   	   //////////////////////Receive Data and Display ///////////////////////
+          memcpypgm2ram(TempBTBuffer,INCOMING_DATA, sizeof(INCOMING_DATA));
+        if(0 == memcmp((void *)&pBuffer[0x03], (void *)TempBTBuffer,sizeof(INCOMING_DATA))) //New BlueSPP old Verson5.4.3
+        {
+            if(pBuffer[0x09] == DATA_LINK_ESCAPE)
+            { 
+                PtrCounter = 0x09+1;
+                DataCheckSum = 0;
+
+                if(pBuffer[PtrCounter] !=DATA_LINK_ESCAPE &&
+                   pBuffer[PtrCounter+1] !=DATA_LINK_ESCAPE)
+                {
+                    TempBTValue = pBuffer[PtrCounter];
+                    DataPID = (UINT16)((((UINT16)TempBTValue<<8)&0xFF00)|pBuffer[PtrCounter+1]); //get PID
+                    DataCheckSum += pBuffer[PtrCounter++];
+                    DataCheckSum += pBuffer[PtrCounter++];
+
+                    TempBTValue = pBuffer[PtrCounter];
+                    DataLength = (UINT16)((((UINT16)TempBTValue<<8)&0xFF00)|pBuffer[PtrCounter+1]); //get length
+                    DataCheckSum += pBuffer[PtrCounter++];
+                    DataCheckSum += pBuffer[PtrCounter++];
+
+                    for(i=0; i<DataLength; i++)
+                    {
+                        if(pBuffer[PtrCounter+i] == DATA_LINK_ESCAPE)
+                        {
+                            if(pBuffer[PtrCounter+i+1] == DATA_LINK_ESCAPE)
+                            {
+                                DataCheckSum += pBuffer[PtrCounter+i];
+                                PtrCounter++;
+                            }
+                            else
+                            {
+                                // print error Message
+                                PtrCounter++;
+                                break;
+                            }
+                        }
+                        else
+                            DataCheckSum += pBuffer[PtrCounter+i];
+                    }
+
+                    DataCheckSum = 0xFF - DataCheckSum;
+                    if(DataCheckSum == DATA_LINK_ESCAPE)
+                        PtrCounter++;
+                    
+                    PtrCounter = PtrCounter+i;
+                    if(DataCheckSum == pBuffer[PtrCounter] &&
+                       pBuffer[PtrCounter+1] == DATA_LINK_ESCAPE &&
+                       pBuffer[PtrCounter+2] == END_OF_TEXT)
+                    {
+
+                        if( DataPID != PID_ACK && DataPID != PID_NAK)
+                        {
+                            TempPIDBuffer[0]=(UINT8)(DataPID>>8)&0xFF;
+                            TempPIDBuffer[1]=(UINT8)(DataPID&0x00FF);				
+                            SysWrapperWrapMessage(TempPIDBuffer, 2, PID_ACK); // PID ACK Response master
+                        }
+                        switch(DataPID)
+                        {
+                            case PID_INITIAL_BATTERY_TEST:
+                                CLEARSCREEN();
+                                memset(DisplayBuffer,0x00,sizeof(DisplayBuffer));
+                                memcpypgm2ram((void*)DisplayBuffer,BatteryTestInitial,sizeof(BatteryTestInitial));
+                                SysDisplayString(DisplayBuffer,1,DISPLAY_C);	
+
+                                PtrCounter = 0x09+5;	
+                                Battery.BatteryTypeId = pBuffer[PtrCounter++];
+                                TempBTValue = pBuffer[PtrCounter];
+                                Battery.RatedCCA = (UINT16)((((UINT16)TempBTValue<<8)&0xFF00)|pBuffer[PtrCounter+1]);
+                                PtrCounter +=2;
+                                Battery.BatJISIndex = pBuffer[PtrCounter++];
+                                Battery.AlgorithmId = pBuffer[PtrCounter];
+
+                                itoabase(Battery.BatteryTypeId, DisplayBuffer,4, 10);
+                                strcatpgm2ram((char *)DisplayBuffer, ":TYPE");
+                                DisplayString_S(DisplayBuffer, 3, DISPLAY_N);
+
+                                itoabase(Battery.BatJISIndex, DisplayBuffer,4, 10);
+                                strcatpgm2ram((char *)DisplayBuffer, ":INDEX");
+                                DisplayString_S(DisplayBuffer, 3, DISPLAY_R);
+                                // display Battery Rating
+                                itoabase(Battery.RatedCCA, DisplayBuffer,4, 10);
+                                strcatpgm2ram((char *)DisplayBuffer, "CCA ");
+                                DisplayString_S(DisplayBuffer, 4, DISPLAY_N);
+
+                                itoabase(Battery.AlgorithmId, DisplayBuffer,4, 10);
+                                strcatpgm2ram((char *)DisplayBuffer, ":ALG");
+                                DisplayString_S(DisplayBuffer, 4, DISPLAY_R);	
+
+                                SPPBatteryTestState = BATTERY_STATE_READY;
+                                break;
+                                
+                            case PID_PERFORM_BATTERY_TEST:
+                                PtrCounter = 0x09+5;	
+                                if(pBuffer[PtrCounter] == 0)
+                                {
+                                    StartBatteryTestFlg = FALSE;
+                                    OperatingState = BATTERY_TEST;
+                                    TestState = BATTERY_TEST_INITIALIZE;
+                                    SPPBatteryTestState = BATTERY_STATE_BUSY;
+                                }
+                                break;
+                                
+                            case PID_ACK://PID_RETURN_BATTERY_RESULT:
+                                PtrCounter = 0x09+5;	
+                                TempDataPID = (UINT16)((pBuffer[PtrCounter]>>8)|pBuffer[PtrCounter+1]);
+                                if(TempDataPID == PID_RETURN_BATTERY_RESULT)	
+                                {
+                                    CLEARSCREEN();
+                                    memset(DisplayBuffer,0x00,sizeof(DisplayBuffer));
+                                    memcpypgm2ram((void*)DisplayBuffer,BatterySendDataFinish,sizeof(BatterySendDataFinish));
+                                    SysDisplayString(DisplayBuffer,1,DISPLAY_C);
+                                }
+                                break;
+
+                            case PID_PACKET_REQUEST:
+                                PtrCounter = 0x09+5;	
+                                TempDataPID = (UINT16)((pBuffer[PtrCounter]>>8)|pBuffer[PtrCounter+1]);						
+                                if(TempDataPID == PID_CHECK_STATE)
+                                {
+                                    SysWrapperWrapMessage(&SPPBatteryTestState, 1, PID_CHECK_STATE);
+                                }
+                                else if(TempDataPID == PID_RETURN_BATTERY_RESULT)
+                                {
+                                    if(StartBatteryTestFlg == TRUE)
+                                    {
+                                        tempBuffer[0]= Battery.Result;
+                                        tempBuffer[1]= (Battery.VoltsCD>>8)&0xFF; 
+                                        tempBuffer[2]= Battery.VoltsCD &0xFF;
+                                        tempBuffer[3]= (Battery.CCA>>8)&0xFF;
+                                        tempBuffer[4]= Battery.CCA&0xFF;
+                                        tempBuffer[5]= Battery.SOH&0xFF;
+                                        tempBuffer[6]= Battery.SOC&0xFF;
+                                        SysWrapperWrapMessage(tempBuffer, 7, PID_RETURN_BATTERY_RESULT);
+                                    }
+                                }
+                            break;
+
+                            default:
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        break;
 
 	case BTM2WriteEEProm:
-	     	if(memcmppgm2ram((void *)pBuffer, (rom void *)TCU_HCI_M2_GENERAL_WRITE_EEPROM_RESP, 13) == 0)	 	
+        if(memcmppgm2ram((void *)pBuffer, (rom void *)TCU_HCI_M2_GENERAL_WRITE_EEPROM_RESP, 13) == 0)	 	
         {
-        
-	       SysBTSetState(WriteBDAddress); 
-           	BlueToothStatemachine();  
-           	Result = 1;
-         }
-
-	break;
+            SysBTSetState(WriteBDAddress); 
+            BlueToothStatemachine();  
+            Result = 1;
+        }
+	    break;
 		 
    }     
    return(Result);

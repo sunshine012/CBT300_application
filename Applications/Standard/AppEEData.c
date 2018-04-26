@@ -91,13 +91,7 @@ const rom _BatteryData EEBattery = {
 
 /************************************************************************/
 #pragma romdata EE_BoolthData
-const rom _BTRemoteData EEBTRemoteData = {
-	{ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
-	{ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	  0x00, 0x00, 0x00, 0x00},
-	  FALSE
-};
+const rom _BTRemoteData EEBTRemoteData[BT_DEVICE_RECORDED_NUM_MAX] = {0};
 
 /************************************************************************/
 #pragma romdata EE_EEDATA

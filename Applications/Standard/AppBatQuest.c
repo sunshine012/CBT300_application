@@ -213,44 +213,43 @@ void SelectBluetoothMenu(void)
    switch(TestState)
    {
       case SELECT_BLUE_MENU_INITIALIZE:  
-	   CLEARSCREEN();
-	   AppControlStatus(CTRL_ENTER);
-	   SysDisplayString_W(DICT_TEXT_BLUETOOTHREADY, 1, DISPLAY_C);
-	   AppData.OperateSystemId = OPERATE_SYSTEM_ANDROID;
-	   SysDisplayString_W(DICT_TEXT_PRESSENTERCANCEL, 2, DISPLAY_C);
-       TestState++;                 
-         break;
+            CLEARSCREEN();
+            AppControlStatus(CTRL_ENTER);
+            SysDisplayString_W(DICT_TEXT_BLUETOOTHREADY, 1, DISPLAY_C);
+            SysDisplayString_W(DICT_TEXT_PRESSENTERCANCEL, 2, DISPLAY_C);
+            AppData.OperateSystemId = OPERATE_SYSTEM_ANDROID;
+            TestState++;                 
+            break;
 
       case SELECT_BLUE_MENU_QUESTION:
-	  	
-         switch(KeyPad.Keys)
-         {
-            case ENTER_KEY:
-               if(Status.Bit.KeysReleased == TRUE)
-               {
-                  	CLEARSCREEN();
-                  	if(AppData.OperateSystemId == OPERATE_SYSTEM_ANDROID)
-                  	{											
-							DrvPan1026Off();				
-							BTSystemConfig = OPERATE_SYSTEM_NONE;
-                  		OperatingState = BAT_NUMBER_STATE;
-                  		TestState = BATTERY_NUMBER_INITIALIZE;
-							AppData.OperateSystemId = OPERATE_SYSTEM_NONE;
-                  	}
-               }                       
-               Status.Bit.KeysReleased = FALSE;
-               break;
+             switch(KeyPad.Keys)
+             {
+                case ENTER_KEY:
+                   if(Status.Bit.KeysReleased == TRUE)
+                   {
+                      	CLEARSCREEN();
+                      	if(AppData.OperateSystemId == OPERATE_SYSTEM_ANDROID)
+                      	{											
+                            DrvPan1026Off();				
+                            BTSystemConfig = OPERATE_SYSTEM_NONE;
+                            OperatingState = BAT_NUMBER_STATE;
+                            TestState = BATTERY_NUMBER_INITIALIZE;
+                            AppData.OperateSystemId = OPERATE_SYSTEM_NONE;
+                      	}
+                   }                       
+                   Status.Bit.KeysReleased = FALSE;
+                   break;
 
             	case DOWN_ARROW_KEY:
             	case UP_ARROW_KEY:
-               if(Status.Bit.KeysReleased == TRUE) 
-               {   
-               
-				  }                       
-              Status.Bit.KeysReleased = FALSE;
-               break;	
-         }
-         break;
+                    if(Status.Bit.KeysReleased == TRUE) 
+                    {   
+
+                    }                       
+                   Status.Bit.KeysReleased = FALSE;
+                   break;	
+             }
+             break;
 		
    }
 }

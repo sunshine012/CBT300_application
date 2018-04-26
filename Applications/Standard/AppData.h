@@ -204,6 +204,8 @@ typedef UINT8 _State;
 
 #define SERIALNUMBER  10
 
+#define BT_DEVICE_RECORDED_NUM_MAX      10
+
 #ifndef ON
 #define ON                 1
 #endif

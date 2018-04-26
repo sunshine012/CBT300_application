@@ -41,7 +41,7 @@ extern const rom _AppGlobalFlg      EEAppGlobalFlg;
 extern const rom _AppData           EEAppData;
 extern const rom UINT8              EESerialNumberData[SERIALNUMBER+1];
 extern const rom _BatteryData       EEBattery;
-extern const rom _BTRemoteData      EEBTRemoteData;
+extern const rom _BTRemoteData EEBTRemoteData[BT_DEVICE_RECORDED_NUM_MAX];
 
 
 ////////////////////////////////////////////////////////////////////////////////

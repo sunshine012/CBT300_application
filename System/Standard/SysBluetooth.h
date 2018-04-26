@@ -87,8 +87,7 @@
                                      (((UINT32)(a)&0x00FF0000)>>8) | \
                                      (((UINT32)(a)&0x0000FF00)<<8) | \
                                      (((UINT32)(a)&0x000000FF)<<24))
-extern UINT8    BTState;
-extern UINT8    RequestConnectStateCounter;
+extern UINT8  BTState;
 extern UINT8  WrapperBufferSize;
 
 extern void SysInitBlueToothRadio(void);

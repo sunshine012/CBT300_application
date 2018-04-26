@@ -101,8 +101,15 @@ void BlueToothState(void)
 		case BLUETOOTH_INIT:
 			BTSendData();
 			SysInitBlueToothRadio();
+            DrvTimer0SetCounter(TIMER0_SEC_COUNTER_2, 1);
 			TestState++;
 			break;
+
+        case BLUETOOTH_STARTPAIR:
+            if(DrvTimer0CounterDone(TIMER0_SEC_COUNTER_2))
+                TestState = BLUETOOTH_INIT;
+            break;
+            
 		case BLUETOOTH_PAIR_COMPLETE:
 			if(DrvTimer0CounterDone(TIMER0_SEC_COUNTER_1))
 			{
@@ -118,7 +125,6 @@ void BlueToothState(void)
 			}
 			break;
 		case BLUETOOTH_REPAIR:
-
 			switch(KeyPad.Keys)
          		{
             			case ENTER_KEY:
