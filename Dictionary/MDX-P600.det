@@ -1,0 +1,287 @@
+[Setup]
+DisplayWidth=20
+ValidChars=!#$%&'"()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]~_
+DictionaryFile=C:\CBT\CBT-350 Development\Dictionary\CBT-350 Rev A.xls
+DestinationFolder=C:\CBT\CBT-350 Development\Dictionary
+DictName=Standard
+IndexOffset=0
+Include0=#include "DrvPic18f67J10.h"
+Include1=#include "DrvMcc18.h"
+Include2=#include "DrvMdxP600.h"
+Include3=
+Include4=#pragma romdata _DictStandard_
+
+[Languages]
+English US=1
+English UK=0
+Danish=0
+Dutch=0
+German=0
+Slovak=0
+Swedish=0
+French=0
+Spanish US=0
+Spanish=0
+Portuguese=0
+Italian=0
+Croatian=0
+Czech=0
+Estonian=0
+Finnish=0
+Polish=0
+Norwegian=0
+Lithuanian=0
+Latvian=0
+Japanese=0
+Romanian=0
+Slovenian=0
+Hungarian=0
+Canadian=0
+Turkish=0
+Greek=0
+Russian=0
+French Canadian=0
+Simpified Chinese=0
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;
+; Custom conversions
+;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;[CustomConversions]
+; There are no custom conversions for the MDX-600
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;
+; Standard
+;
+; Specifies the standard character conversions.
+;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+[Standard]
+
+;
+; Special ASCII characters.
+;
+
+u=0x10		:Up arrow (u = up)
+d=0x11		:Down arrow (d = down)
+l=0x12		:Left arrow (l=left)
+r=0x13		:Right arrow (r = right)
+p=0x14		:Printer (p = printer)
+e=0x15		:Enter (e = enter)
+m=0x16		:Menu (m = menu)
+c=0x17		:Left side of NOT OK/CHARGE symbol (ch = charge)
+h=0x18		:Right side of NOT OK/CHARGE sysmbol (ch = charge)
+o=0x19		:Left side of OK symbol (ok = OK)
+k=0x1A		:Right side of OK symbol (ok = OK)
+°=0x1B		:Degree sign
+º=0x1B
+t=0x1B		:Degree sign (t = temperature sign)
+;Ø=0x1F      :O with slash
+
+;
+; Meaning of special accents:
+;   macron 	  - dash above the character
+;   breve	  - an upside down arce above the character
+;   ogonek	  - a mirrored ¸ below the character
+;   grave	  - a ` above the character
+;   acute	  - a ´ above the character
+;   circumflex	  - a ^ above the character
+;   tilde	  - a ~ above the character
+;   caron	  - a reversed ^ above the character
+;   stroke	  - a - through a vertical line of the character
+;   dot above	  - a dot above the character
+;   cedilla	  - a ¸ below the character
+;   double acute  - a ´´ above the character
+;   ring above    - a ° above the character
+;
+
+;
+; Standard accented ASCII characters.
+;
+
+À=0x60		: Latin A Grave
+Á=0x61		: Latin A Acute
+Â=0x62		: Latin A Circumflex
+Ã=0x63		: Latin A Tilde
+Ä=0x64		: Latin A Diaeresis
+Å=0x65		: Latin A Ring
+Æ=0x66		: Latin Ae
+Ç=0x67		: Latin C Cedilla
+È=0x68		: Latin E Grave
+É=0x69		: Latin E Acute
+Ê=0x6A		: Latin E Circumflex
+Ë=0x6B		: Latin E Diaeresis
+Ì=0x6C		: Latin I Grave
+Í=0x6D		: Latin I Acute
+Î=0x6E		: Latin I Circumflex
+Ï=0x6F		: Latin I Diaeresis
+Ð=0x70		: Latin Eth
+Ñ=0x71		: Latin N Tilde
+Ò=0x72		: Latin O Grave
+Ó=0x73		: Latin O Acute
+Ô=0x74		: Latin O Circumflex
+Õ=0x75		: Latin O Tilde
+Ö=0x76		: Latin O Diaeresis
+Ø=0x77		: Latin O Stroke
+Ù=0x78		: Latin U Grave
+Ú=0x79		: Latin U Acute
+Û=0x7A		: Latin U Circumflex
+Ü=0x7B		: Latin U Diaeresis
+Ý=0x7C		: Latin Y Acute
+¿=0x7D      : Latin inverted question mark
+
+;
+; Unicode special characters.
+;
+
+2013=-		: Dash
+2190=0x12	: Left arrow
+2191=0x10	: Up arrow
+2192=0x13	: Right arrow
+2193=0x11	: Down arrow
+2194=n.i.	: Left/right arrow
+2195=0x88	: Up/down arrow
+21A8=0x88	: Up/down arrow
+2554=0x1D	: Ø left half
+2557=0x1E	: Ø right half
+
+;
+; Latin Extended - A.
+;
+
+0100=0x80       : Latin A Macron
+0102=0x81       : Latin A Breve
+0104=0x82       : Latin A Ogonek
+0106=0x83       : Latin C Acute
+0108=0x84       : Latin C Circumflex
+010A=0x85       : Latin C DotAbove
+010C=0x86       : Latin C Caron
+010E=0x87       : Latin D Caron
+0110=0x88       : Latin D Stroke
+0112=0x89       : Latin E Macron
+0114=0x8A       : Latin E Breve
+0116=0x8B       : Latin E DotAbove
+0118=0x8C       : Latin E Ogonek
+011A=0x8D       : Latin E Caron
+011C=0x8E       : Latin G Circumflex
+011E=0x8F       : Latin G Breve
+0120=0x90       : Latin G DotAbove
+0122=0x91       : Latin G Cedilla
+0124=0x92       : Latin H Circumflex
+0126=0x93       : Latin H Stroke
+0128=0x94       : Latin I Tilde
+012A=0x95       : Latin I Macron
+012C=0x96       : Latin I Breve
+012E=0x97       : Latin I Ogonek
+0130=0x98       : Latin I DotAbove
+0132=0x99       : Latin IJ
+0134=0x9A       : Latin J Circumflex
+0136=0x9B       : Latin K Cedilla
+0139=0x9C       : Latin L Acute
+013B=0x9D       : Latin L Cedille
+013D=0x9E       : Latin L Caron
+013F=0x9F       : Latin L MiddleDot
+0141=0xA0       : Latin L Stroke
+0143=0xA1       : Latin N Acute
+0145=0xA2       : Latin N Cedilla
+0147=0xA3       : Latin N Caron
+014A=0xA4       : Latin Eng
+014C=0xA5       : Latin O Macron
+014E=0xA6       : Latin O Breve
+0150=0xA7       : Latin O DoubleAcute
+0152=0xA8       : Latin OE
+0154=0xA9       : Latin R Acute
+0156=0xAA       : Latin R Cedilla
+0158=0xAB       : Latin R Caron
+015A=0xAC       : Latin S Acute
+015C=0xAD       : Latin S Circumflex
+015E=0xAE       : Latin S Cedilla
+0160=0xAF       : Latin S Caron
+0162=0xB0       : Latin T Cedilla
+0164=0xB1       : Latin T Caron
+0166=0xB2       : Latin T Stroke
+0168=0xB3       : Latin U Tilde
+016A=0xB4       : Latin U Macron
+016C=0xB5       : Latin U Breve
+016E=0xB6       : Latin U RingAbove
+0170=0xB7       : Latin U DoubleAcute
+0172=0xB8       : Latin U Ogonek
+0174=0xB9       : Latin W Circumflex
+0176=0xBA       : Latin Y Circumflex
+0178=0xBB       : Latin Y Diaeresis
+0179=0xBC       : Latin Z Acute
+017B=0xBD       : Latin Z DotAbove
+017D=0xBE       : Latin Z Caron
+
+;
+; Unicode Greek characters.
+;
+
+0389=H      : Greek H with tonos
+038A=I      : Greek Iota with tonos
+038E=Y      : Greek Upsilon with tonos
+0391=A		: Greek Alpha
+0392=B		: Greek Beta
+0393=0xC0	: Greek Gamma
+0394=0xC1	: Greek Delta
+0395=E		: Greek Epsilon
+0396=Z		: Greek Zeta
+0397=H		: Greek Eta
+0398=0xC2	: Greek Theta
+0399=I		: Greek Iota
+039A=K		: Greek Kappa
+039B=0xC3	: Greek Lamda
+039C=M		: Greek Mu
+039D=N		: Greek Nu
+039E=0xC4	: Greek Xi
+039F=O		: Greek Omicron
+03A0=0xC5	: Greek Pi
+03A1=P		: Greek Rho
+03A3=0xC6	: Greek Sigma
+03A4=T		: Greek Tau
+03A5=Y		: Greek Upsilon
+03A6=0xC7	: Greek Phi
+03A7=X		: Greek Chi
+03A8=0xC8	: Greek Psi
+03A9=0xC9	: Greek Omega
+
+;
+; Unicode Cyrillic characters.
+;
+
+0410=A		: Cyrilic A
+0411=0xD0  	: Cyrilic Be
+0412=B		: Cyrilic Ve
+0413=0xD1  	: Cyrilic Ghe
+0414=0xD2  	: Cyrilic De
+0415=E		: Cyrilic Ie
+0416=0xD3  	: Cyrilic Zhe
+0417=0xD4  	: Cyrilic Ze
+0418=0xD5  	: Cyrilic I
+0419=0xD6  	: Cyrilic Short I
+041A=0xD7  	: Cyrilic Ka
+041B=0xD8  	: Cyrilic El
+041C=M		: Cyrilic Em
+041D=H		: Cyrilic En
+041E=O		: Cyrilic O
+041F=0xD9  	: Cyrilic Pe
+0420=P		: Cyrilic Er
+0421=C		: Cyrilic Es
+0422=T		: Cyrilic Te
+0423=0xDA  	: Cyrilic U
+0424=0xDB  	: Cyrilic Ef
+0425=X		: Cyrilic Ha
+0426=0xDC  	: Cyrilic Tse
+0427=0xDD  	: Cyrilic Che
+0428=0xDE  	: Cyrilic Sha
+0429=0xDF  	: Cyrilic Shcha
+042A=0xE0  	: Cyrilic Hard Sign
+042B=0xE1  	: Cyrilic Yeru
+042C=0xE2  	: Cyrilic Soft Sign
+042D=0xE3  	: Cyrilic E
+042E=0xE4  	: Cyrilic Yu
+042F=0xE5  	: Cyrilic Ya

@@ -1,0 +1,35 @@
+CBT-300
+11/10/2015
+Rev A Build 0
+King Chen
+
+1.Based on SEC-100.
+2.Add BT function.
+3.Add battery type.
+4.Add start logo.
+5.Add AGM algorithm.
+6.Add display Chinese language.
+7.And so on.
+
+CBT-300
+03/25/2016
+Rev A Build 1
+King Chen
+
+1. Change Regular flood algorithm with 071-2TA106-A(REGULAR 12V).
+2. Add BLE sending to IOS system.
+3. Revised relevant document.
+
+
+CBT-350
+01/04/2018
+Rev A Build 1
+Sam Sliang
+
+add battery list 61-64.
+
+CBT-350 Development
+01/30/2018
+Rev A Build 0
+Chad He	
+Support Bootloader downloading and update.
