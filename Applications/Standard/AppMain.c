@@ -210,10 +210,11 @@ void AppMain( void )
             }  
         }       
 
-			if(CBT300_CONFIG == ConfigData && BTSystemConfig != OPERATE_SYSTEM_NONE && DrvUsartByteReady(USART_PORT_2))
+			if(CBT300_CONFIG == ConfigData && BTSystemConfig != OPERATE_SYSTEM_NONE)
 			{        
-              if(AppCheckSerialPort(SerialRxBuffer2, (BTState >= BTReady)?BLUETOOTH_DATA_SPECIAL : BLUETOOTH_DATA_NORMAL)
-                    &(USART_STATUS_BUFFER_ERROR | USART_STATUS_TIMEOUT))
+              if(DrvUsartByteReady(USART_PORT_2) &&
+                (AppCheckSerialPort(SerialRxBuffer2, (BTState >= BTReady)?BLUETOOTH_DATA_SPECIAL : BLUETOOTH_DATA_NORMAL)
+                    &(USART_STATUS_BUFFER_ERROR | USART_STATUS_TIMEOUT)))
               {
       				if(SysProcessBluetoothCommand(SerialRxBuffer2) == 1)
 					{

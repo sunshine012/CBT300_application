@@ -68,7 +68,7 @@ const rom _AppData EEAppData = {
 
 /************************************************************************/
 #pragma romdata EE_AppSNum             // Global flags
-
+    // don't modify this address, related with the bootloader
 const rom UINT8 EESerialNumberData[SERIALNUMBER+1]="0216300000";
 
 /************************************************************************/
@@ -91,6 +91,7 @@ const rom _BatteryData EEBattery = {
 
 /************************************************************************/
 #pragma romdata EE_BoolthData
+// don't modify this address, related with the bootloader
 const rom _BTRemoteData EEBTRemoteData[BT_DEVICE_RECORDED_NUM_MAX] = {0};
 
 /************************************************************************/

@@ -260,7 +260,7 @@ volatile UINT16 DrvUsart2Read( void* pBuffer, UINT16 MaxCounts)
    UINT16   Count = 0;
    UINT8    Char;
 
-   while(DrvUsartByteReady(USART_PORT_2) && Count < MaxCounts)      
+   while(Count < MaxCounts)      
    {                                   
       DrvUsartReadByte(USART_PORT_2, &Char); //read byte(s)
                                        //save byte in buffer
@@ -268,6 +268,14 @@ volatile UINT16 DrvUsart2Read( void* pBuffer, UINT16 MaxCounts)
    }
    return(Count);
 }
+//
+//
+//
+volatile UINT16 DrvUsart2GetMessageLength(void)
+{
+    return(Usart2Buffer[Usart2ReadIndex]);
+}
+
 //
 //
 //
@@ -288,12 +296,6 @@ volatile UINT16 DrvUsartGetNumberOfBytesAvailable(void)
    }
    return((UINT16)NumOfBytes);
 }
-
-volatile UINT16 DrvUsart2GetMessageLength(void)
-{
-    return(Usart2Buffer[Usart2ReadIndex]);
-}
-
 
 volatile UINT8 AppCheckSerialPort( CHAR* pBuffer, UINT8 mode)
 {                                      //get the status
@@ -318,11 +320,11 @@ volatile UINT8 AppCheckSerialPort( CHAR* pBuffer, UINT8 mode)
         else if(mode == BLUETOOTH_DATA_SPECIAL)
         {
             BytesRead = DrvUsart2GetMessageLength();
-            if(BytesRead < BytesAvailable)
+            if(BytesRead <= BytesAvailable)
             {
                 NumOfBytes = DrvUsart2Read(pBuffer, BytesRead);
                 *(pBuffer + NumOfBytes) = '\0';  //add the NULL character
-                //DrvUsartSendData(USART_PORT_1, pBuffer, BytesRead);
+                DrvUsartSendData(USART_PORT_1, pBuffer, BytesRead);
             }
         }
    }
@@ -458,7 +460,7 @@ void DrvUsart2Isr( void )
 	//Bluetooth for handle Event 
     Usart2Buffer[ Usart2WriteIndex ] = RCREG2;
     DrvTimer0Reset();
-    DrvTimer0SetCounter( TIMER0_MS_COUNTER_BT, 10);//10ms
+    DrvTimer0SetCounter( TIMER0_MS_COUNTER_BT, 2);//10ms
     Usart2WriteIndex++;
    
    if( Usart2WriteIndex == Usart2BufferSize )

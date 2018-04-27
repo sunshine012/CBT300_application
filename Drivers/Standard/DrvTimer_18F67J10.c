@@ -71,10 +71,10 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 
-UINT8    Timer0IntCounter;
+UINT16    Timer0IntCounter;
 
-UINT8    Timer0SecCounter1;
-UINT8    Timer0SecCounter2;
+UINT16    Timer0SecCounter1;
+UINT16    Timer0SecCounter2;
 
 UINT16   Timer0MsCounter1;
 UINT16   Timer0MsCounter2;

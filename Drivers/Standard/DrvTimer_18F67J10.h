@@ -115,12 +115,12 @@ typedef far rom void (*_IsrFunction)( void );
 // Prescaler output:       8MHz / 8    = 1MHz
 // Single count:           1 / 1MHz    = 1us
 // Counts per interrupt:   10ms / 1us  = 10000
-#define TIMER0_COUNTS            10000
+#define TIMER0_COUNTS            2000   //10000
 #define TIMER0_COUNTER_MAX       0xFFFF
 #define TIMER0_COUNTER_START     (TIMER0_COUNTER_MAX - TIMER0_COUNTS)
 #define TIMER0_COUNTER_LOW       (TIMER0_COUNTER_START & 0xFF)
 #define TIMER0_COUNTER_HIGH      ((TIMER0_COUNTER_START >> 8) & 0xFF)
-#define TIMER0_INTS_PER_SECOND   100
+#define TIMER0_INTS_PER_SECOND   500    //100
 
 // Timer 0 counter definitions.
 #define TIMER_SEC_COUNTER_1_FLAG    0b00000001
@@ -262,8 +262,8 @@ typedef far rom void (*_IsrFunction)( void );
 
 extern _IsrFunction   IsrFunction;
 
-extern UINT8 Timer0SecCounter1;
-extern UINT8 Timer0SecCounter2;
+extern UINT16 Timer0SecCounter1;
+extern UINT16 Timer0SecCounter2;
 
 void  DrvTimer0Init( void );
 void  DrvTimer0Isr( void );

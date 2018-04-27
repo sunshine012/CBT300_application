@@ -426,7 +426,7 @@ void SysInitBlueToothRadio(void)
 	SysBTReset();
 	BTRemoteData.PairFlg = FALSE;
 	DrvEepromRead((UINT16)&EESerialNumberData, (UINT8*)SerialNumberData, sizeof(SerialNumberData));
-	DrvEepromRead((UINT16)&EEBTRemoteData, (UINT8*)&BTRemoteData, sizeof(_BTRemoteData));		
+	DrvEepromRead((UINT16)&EEBTRemoteData, (UINT8*)&BTRemoteData, sizeof(_BTRemoteData));
 }
 
 //
@@ -614,12 +614,15 @@ UINT8 SysProcessBluetoothCommand( CHAR* pBuffer)
          break;
 
       case ConnectionRequested:
-          memcpypgm2ram( TempBTBuffer, TCU_MNG_CONNECTION_ACCEPT_RESP, sizeof(TCU_MNG_CONNECTION_ACCEPT_RESP));
-          if(memcmp((void *)pBuffer, (void *)TempBTBuffer,sizeof(TCU_MNG_CONNECTION_ACCEPT_RESP))==0)
+          memcpypgm2ram( TempBTBuffer, TCU_MNG_CONNECTION_ACCEPT_RESP, (sizeof(TCU_MNG_CONNECTION_ACCEPT_RESP)-1));
+          if(memcmp((void *)pBuffer, (void *)TempBTBuffer, (sizeof(TCU_MNG_CONNECTION_ACCEPT_RESP)-1))==0)
           {
-              Result = 1;
-              SysBTSetState(BTReady2);
-              BlueToothStatemachine();
+            if(pBuffer[7] == 0x00)
+                SysBTSetState(BTReady2);
+            else
+                SysBTSetState(BTReady);
+            BlueToothStatemachine();
+            Result = 1;
           }
          break;
 
@@ -741,35 +744,20 @@ UINT8 SysProcessBluetoothCommand( CHAR* pBuffer)
           break;
           
       case PairingComplete:
-          memcpypgm2ram(TempBTBuffer,HCI_Simple_Pairing_Complete_Event,16);
-          for(i=0; i<6; i++)
-          {
-              TempBTBuffer[10+i] = REMOTE_BDADDRESS[i];
-          }
-          commandBuffer = TempBTBuffer;
-          if(memcmp((void *)pBuffer, (void *)commandBuffer,sizeof(HCI_Simple_Pairing_Complete_Event))==0)
-          {
-              SysBTSetState(ControlSSP3);
-              BlueToothStatemachine();
-              Result = 1;
-          }
-          else
-          {   // select Cancel on the Mobile or PC
-              memcpypgm2ram(TempBTBuffer,HCI_Simple_Pairing_Complete_Cancel_Event,16);
-              for(i=0; i<6; i++)
-              {
-                  TempBTBuffer[10+i] = REMOTE_BDADDRESS[i];
-              }
-              commandBuffer = TempBTBuffer;
-              if(memcmp((void *)pBuffer, (void *)commandBuffer,sizeof(HCI_Simple_Pairing_Complete_Cancel_Event))==0)
-              {
-                  SysBTSetState(ControlSSP3);
-                  BlueToothStatemachine();
-                  Result = 1;
-              }
-          }
-          break;
-         
+            memcpypgm2ram(TempBTBuffer,HCI_Simple_Pairing_Complete_Event,16);
+            for(i=0; i<6; i++)
+            {
+                TempBTBuffer[10+i] = REMOTE_BDADDRESS[i];
+            }
+            commandBuffer = TempBTBuffer;
+            if(memcmp((void *)pBuffer, (void *)commandBuffer,sizeof(HCI_Simple_Pairing_Complete_Event))==0)
+            {
+                SysBTSetState(ControlSSP3);
+                BlueToothStatemachine();
+                Result = 1;
+            }
+            break;
+            
       case ControlSSP3:
           if(pBuffer[0] == 0x20)   // User select Allow on the Mobile Phone or PC
           {
@@ -859,6 +847,16 @@ UINT8 SysProcessBluetoothCommand( CHAR* pBuffer)
           }
          break;
          
+        case BTSPPReady3:
+              memcpypgm2ram(TempBTBuffer,TCU_SPP_CONNECT_EVENT2, sizeof(TCU_SPP_CONNECT_EVENT2) );
+              if((memcmp((void *)&pBuffer[3], (void *)TempBTBuffer, sizeof(TCU_SPP_CONNECT_EVENT2))==0)&&
+                 (memcmp((void *)&pBuffer[8], (void *)REMOTE_BDADDRESS, sizeof(REMOTE_BDADDRESS))==0))    
+              {   
+                 SysBTSetState(DEF_TCU_MNG_SSP_INFO_EVENT);
+                 BlueToothStatemachine();
+                 Result = 1;
+              }
+              break;
      case DEF_TCU_MNG_SSP_INFO_EVENT:
         memcpypgm2ram( TempBTBuffer, HCI_Encryption_Key_Refresh_Complete_Event, sizeof(HCI_Encryption_Key_Refresh_Complete_Event));
         if(memcmp((void *)pBuffer, (void *)TempBTBuffer,sizeof(HCI_Encryption_Key_Refresh_Complete_Event))==0)
@@ -892,7 +890,7 @@ UINT8 SysProcessBluetoothCommand( CHAR* pBuffer)
                 SysDisplayString_W(DICT_TEXT_PLEASECONNECT, 2, DISPLAY_C);				
             }
 	   	   //////////////////////Receive Data and Display ///////////////////////
-          memcpypgm2ram(TempBTBuffer,INCOMING_DATA, sizeof(INCOMING_DATA));
+        memcpypgm2ram(TempBTBuffer,INCOMING_DATA, sizeof(INCOMING_DATA));
         if(0 == memcmp((void *)&pBuffer[0x03], (void *)TempBTBuffer,sizeof(INCOMING_DATA))) //New BlueSPP old Verson5.4.3
         {
             if(pBuffer[0x09] == DATA_LINK_ESCAPE)
