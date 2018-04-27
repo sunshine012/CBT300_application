@@ -318,7 +318,7 @@ volatile UINT8 AppCheckSerialPort( CHAR* pBuffer, UINT8 mode)
         else if(mode == BLUETOOTH_DATA_SPECIAL)
         {
             BytesRead = DrvUsart2GetMessageLength();
-            if(BytesRead < BytesAvailable)
+            if(BytesRead <= BytesAvailable)
             {
                 NumOfBytes = DrvUsart2Read(pBuffer, BytesRead);
                 *(pBuffer + NumOfBytes) = '\0';  //add the NULL character
