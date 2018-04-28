@@ -227,7 +227,7 @@ void	DrvUsartSendData( _UsartPort Port, UINT8 *Data, UINT8 Count )
    while( Count-- )
    {
       DrvUsartSendByte( Port, *Data++ );
-	CLRWDT();  	  
+	  CLRWDT();  	  
    }
 }
 
@@ -243,7 +243,6 @@ volatile UINT8 DrvUsartGetStatus(void)
    if(DrvTimer0CounterDone(TIMER0_MS_COUNTER_BT ))
    {
    		Status |= USART_STATUS_TIMEOUT;
-		//DrvTimer0SetCounter( TIMER0_MS_COUNTER_BT, 10);//10ms
    }
    else
    {
@@ -324,7 +323,7 @@ volatile UINT8 AppCheckSerialPort( CHAR* pBuffer, UINT8 mode)
             {
                 NumOfBytes = DrvUsart2Read(pBuffer, BytesRead);
                 *(pBuffer + NumOfBytes) = '\0';  //add the NULL character
-                DrvUsartSendData(USART_PORT_1, pBuffer, BytesRead);
+                DrvUsartSendData(USART_PORT_1, pBuffer, NumOfBytes);
             }
         }
    }
@@ -458,9 +457,10 @@ void DrvUsart2Isr( void )
       RCSTA2bits.CREN   = USART_ENABLE_RECEIVER;
    }
 	//Bluetooth for handle Event 
-    Usart2Buffer[ Usart2WriteIndex ] = RCREG2;
+    Usart2Buffer[ Usart2WriteIndex] = RCREG2;
     DrvTimer0Reset();
-    DrvTimer0SetCounter( TIMER0_MS_COUNTER_BT, 2);//10ms
+    DrvTimer0SetCounter( TIMER0_MS_COUNTER_BT, 10); //10ms
+    //DrvUsartSendByte(USART_PORT_1, Usart2Buffer[Usart2WriteIndex]);
     Usart2WriteIndex++;
    
    if( Usart2WriteIndex == Usart2BufferSize )

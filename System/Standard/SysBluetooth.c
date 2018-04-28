@@ -88,7 +88,7 @@ const rom UINT8 TCU_MNG_CONNECTION_STATUS_EVENT[15] = {0x0f,0x00,0x00,0xe1,0x47,
 const rom UINT8 TCU_MNG_CONNECTION_STATUS_EVENT2[15] = {0x0f,0x00,0x00,0xe1,0x47,0x08,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x01};
 const rom UINT8 TCU_MNG_DISCOVER_REMOTE_SERVICE_EVENT[14] = {0x14, 0x00, 0x00, 0xe1, 0x45, 0x0d, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 /// get Remode Address                                               
-const rom UINT8 TCU_MNG_CONNECTION_ACCEPT_REQUEST_EVENT[7] = {0x10, 0x00, 0x00, 0xe1, 0x55, 0x09, 0x00};
+const rom UINT8 TCU_MNG_CONNECTION_ACCEPT_REQUEST_EVENT[7]  = {0x10, 0x00, 0x00, 0xe1, 0x55, 0x09, 0x00};
 const rom UINT8 TCU_MNG_CONNECTION_ACCEPT_REQ[15] 			= {0x0f, 0x00, 0x00, 0xe1, 0x13, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 const rom UINT8 TCU_MNG_CONNECTION_ACCEPT_REQ_LINK_KEY[15] 	= {0x1f, 0x00, 0x00, 0xe1, 0x13, 0x18, 0x00, 0x00, 0xd5, 0xd4, 0x17, 0x88, 0x74, 0x90, 0x01};
 
@@ -369,31 +369,13 @@ void BlueToothStatemachine(void)
       case ControlSSP3:
          //         
          break;
-      
-      case SPPDataTransfer:
-         // Send user confirmation request reply
-         break;
-      
-      case BTSPPReady2:
-         break;
-
-      case BTSPPReady3:
-         //         
-         break;      
-
-      case TestConnection:  
-
-         break;
-
+           
       case SPPDisconnect:  
          // Add BD address defined in commands.h to HCI IO capability reply HCI_IO_Capability_Request_Event
          memcpypgm2ram( TempBTBuffer, TCU_SPP_DISCONNECT_REQ, sizeof(TCU_SPP_DISCONNECT_REQ));
          // Send disconect
          DrvUsartSendData( USART_PORT_2,TempBTBuffer,sizeof(TCU_SPP_DISCONNECT_REQ));   
          break;
-
-      case Pairing_Waiting:
-        break;
 
       case PairingComplete:
          break;
@@ -563,9 +545,9 @@ UINT8 SysProcessBluetoothCommand( CHAR* pBuffer)
         if(memcmp((void *)pBuffer, (void *)TempBTBuffer, sizeof(TCU_MNG_SET_SCAN_RESP))==0)
         {
             SysBTSetState(BTReady);  
-            BlueToothStatemachine();
             Result = 1;
-
+            
+            DrvUsartReset(USART_PORT_2);
             OperatingState = SELECT_BLUEMENU_STATE;
             TestState = SELECT_BLUE_MENU_INITIALIZE;
         }
@@ -573,7 +555,7 @@ UINT8 SysProcessBluetoothCommand( CHAR* pBuffer)
 	//////////////////////////////////Prepair for pair////////////////////////////////////////
       case BTReady:
           memcpypgm2ram( TempBTBuffer, TCU_MNG_CONNECTION_ACCEPT_REQUEST_EVENT, sizeof(TCU_MNG_CONNECTION_ACCEPT_REQUEST_EVENT));//{0x10, 0x00, 0x00, 0xe1, 0x55, 0x09, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x18, 0x11, 0xc0};   
-          if(memcmp((void *)pBuffer, (void *)TempBTBuffer,sizeof(TCU_MNG_CONNECTION_ACCEPT_REQUEST_EVENT))==0)
+          if(memcmp((void *)pBuffer, (void *)TempBTBuffer, sizeof(TCU_MNG_CONNECTION_ACCEPT_REQUEST_EVENT))==0)
           {
               for(i=0; i<6; i++)
               {
@@ -620,8 +602,10 @@ UINT8 SysProcessBluetoothCommand( CHAR* pBuffer)
             if(pBuffer[7] == 0x00)
                 SysBTSetState(BTReady2);
             else
+            {
                 SysBTSetState(BTReady);
-            BlueToothStatemachine();
+                BlueToothStatemachine();
+            }
             Result = 1;
           }
          break;
@@ -635,7 +619,6 @@ UINT8 SysProcessBluetoothCommand( CHAR* pBuffer)
           if(memcmp((void *)pBuffer, (void *)TempBTBuffer, 14)==0)
           {
               SysBTSetState(BTReady3);
-              BlueToothStatemachine();
               Result = 1;
           }
          break;
@@ -707,7 +690,6 @@ UINT8 SysProcessBluetoothCommand( CHAR* pBuffer)
             if(memcmp((void *)pBuffer, (void *)commandBuffer,sizeof(TCU_MNG_SSP_SET_RESP_HCI_IO_Capability_Request_Reply))==0)
             {
                SysBTSetState(BTReady4);
-               BlueToothStatemachine();
                Result = 1;
             }	 		 
             break;
@@ -738,7 +720,6 @@ UINT8 SysProcessBluetoothCommand( CHAR* pBuffer)
           if(memcmp((void *)pBuffer, (void *)commandBuffer,sizeof(TCU_MNG_SSP_SET_RESP_HCI_User_Confirmation_Request_Reply))==0)
           {
               SysBTSetState(PairingComplete);
-              BlueToothStatemachine();
               Result = 1;
           }
           break;
@@ -753,7 +734,6 @@ UINT8 SysProcessBluetoothCommand( CHAR* pBuffer)
             if(memcmp((void *)pBuffer, (void *)commandBuffer,sizeof(HCI_Simple_Pairing_Complete_Event))==0)
             {
                 SysBTSetState(ControlSSP3);
-                BlueToothStatemachine();
                 Result = 1;
             }
             break;
@@ -847,22 +827,11 @@ UINT8 SysProcessBluetoothCommand( CHAR* pBuffer)
           }
          break;
          
-        case BTSPPReady3:
-              memcpypgm2ram(TempBTBuffer,TCU_SPP_CONNECT_EVENT2, sizeof(TCU_SPP_CONNECT_EVENT2) );
-              if((memcmp((void *)&pBuffer[3], (void *)TempBTBuffer, sizeof(TCU_SPP_CONNECT_EVENT2))==0)&&
-                 (memcmp((void *)&pBuffer[8], (void *)REMOTE_BDADDRESS, sizeof(REMOTE_BDADDRESS))==0))    
-              {   
-                 SysBTSetState(DEF_TCU_MNG_SSP_INFO_EVENT);
-                 BlueToothStatemachine();
-                 Result = 1;
-              }
-              break;
      case DEF_TCU_MNG_SSP_INFO_EVENT:
         memcpypgm2ram( TempBTBuffer, HCI_Encryption_Key_Refresh_Complete_Event, sizeof(HCI_Encryption_Key_Refresh_Complete_Event));
         if(memcmp((void *)pBuffer, (void *)TempBTBuffer,sizeof(HCI_Encryption_Key_Refresh_Complete_Event))==0)
         {
             SysBTSetState(WaitingState);
-            BlueToothStatemachine();
             Result = 1;     
             
             CLEARSCREEN();

@@ -207,62 +207,60 @@ void AppMain( void )
                 }
                 if(pBuffer1 > (SerialRxBuffer1 + sizeof(SerialRxBuffer1)))
                     pBuffer1 = SerialRxBuffer1;
-            }  
+                }  
         }       
 
-			if(CBT300_CONFIG == ConfigData && BTSystemConfig != OPERATE_SYSTEM_NONE)
-			{        
-              if(DrvUsartByteReady(USART_PORT_2) &&
-                (AppCheckSerialPort(SerialRxBuffer2, (BTState >= BTReady)?BLUETOOTH_DATA_SPECIAL : BLUETOOTH_DATA_NORMAL)
-                    &(USART_STATUS_BUFFER_ERROR | USART_STATUS_TIMEOUT)))
-              {
-      				if(SysProcessBluetoothCommand(SerialRxBuffer2) == 1)
-					{
-                        memset(SerialRxBuffer2, 0x00, sizeof(SerialRxBuffer2));	
-      				}	  
-              }
-			}
+        if(DrvUsartByteReady(USART_PORT_2))
+        {        
+            if(AppCheckSerialPort(SerialRxBuffer2, ((BTState >= BTReady)?BLUETOOTH_DATA_SPECIAL : BLUETOOTH_DATA_NORMAL))
+                &(USART_STATUS_BUFFER_ERROR | USART_STATUS_TIMEOUT))
+            {
+                if(SysProcessBluetoothCommand(SerialRxBuffer2) == 1)
+                {
+                    //memset(SerialRxBuffer2, 0x00, sizeof(SerialRxBuffer2));
+                }
+            }
+        }
 		
-			if(DrvTimer0CounterDone(TIMER0_MS_COUNTER_1))
-			{
-				DrvTimer0SetCounter(TIMER0_MS_COUNTER_1, 20);//20MS
-				ReadKeys();
-			
-         		if(BATTERY_RATING == OperatingState ||BATTERY_TYPE== OperatingState ||
-                   BAT_NUMBER_STATE == OperatingState)
-         		{ 
-            		if(CheckConnection())
-            		{
-                		ConnectionFlag = TRUE;
-    					ConnectionCounter ++;
-    					if(30 == ConnectionCounter)//
-    					{
-    						ConnectionCounter = 0;
-    						SysClear_Line(2);
-    						AppControlStatus(CTRL_NONE);
-    						SysDisplayString_W(DICT_TEXT_CHECKCONNECT,1,DISPLAY_C);
-    					}
-            		}
-            		else if(ConnectionFlag)
-            		{
-                        ConnectionFlag 	= FALSE;
-                        if(CBT300_CONFIG == ConfigData)
-                        {		
-                            OperatingState 	= BAT_NUMBER_STATE;
-                            TestState 		= BATTERY_NUMBER_INITIALIZE;
-                        }
-                        else
-                        {
-                            OperatingState = BATTERY_TYPE;
-                            TestState = BATTERY_TYPE_INITIALIZE;
-                        }
-            		}
-	            }
-                RunOperatingState();          //Execute current state
-	        }	
-            
-        	CLRWDT();
-    	}
+        if(DrvTimer0CounterDone(TIMER0_MS_COUNTER_1))
+        {
+            DrvTimer0SetCounter(TIMER0_MS_COUNTER_1, 20);//20MS
+            ReadKeys();
+
+            if(BATTERY_RATING == OperatingState ||BATTERY_TYPE== OperatingState ||
+               BAT_NUMBER_STATE == OperatingState)
+            { 
+                if(CheckConnection())
+                {
+                    ConnectionFlag = TRUE;
+                    ConnectionCounter ++;
+                    if(30 == ConnectionCounter)//
+                    {
+                        ConnectionCounter = 0;
+                        SysClear_Line(2);
+                        AppControlStatus(CTRL_NONE);
+                        SysDisplayString_W(DICT_TEXT_CHECKCONNECT,1,DISPLAY_C);
+                    }
+                }
+                else if(ConnectionFlag)
+                {
+                    ConnectionFlag 	= FALSE;
+                    if(CBT300_CONFIG == ConfigData)
+                    {		
+                        OperatingState 	= BAT_NUMBER_STATE;
+                        TestState 		= BATTERY_NUMBER_INITIALIZE;
+                    }
+                    else
+                    {
+                        OperatingState = BATTERY_TYPE;
+                        TestState = BATTERY_TYPE_INITIALIZE;
+                    }
+                }
+            }
+            RunOperatingState();          //Execute current state
+        }	
+    	CLRWDT();
+	}
 #ifdef USE_BOOT_LOADER
    DisableWatchDog();                  //Disable the watchdog
    //INTCONbits.GIEH = INT_DISABLE;      //Disable all high priority interrupts &
